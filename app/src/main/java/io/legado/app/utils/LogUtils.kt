@@ -135,10 +135,12 @@ object LogUtils {
         }
     }
 
+    fun w(tag: String, msg: String) { d(tag, msg) }
 }
 
 fun Throwable.printOnDebug() {
     if (BuildConfig.DEBUG) {
         printStackTrace()
     }
+    fun w(tag: String, msg: String) { d(tag, msg) }
 }

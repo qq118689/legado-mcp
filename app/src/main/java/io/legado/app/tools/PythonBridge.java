@@ -2,7 +2,7 @@ package io.legado.app.tools;
 
 import android.content.Context;
 
-import io.legado.app.AppLogger;
+import io.legado.app.utils.LogUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,16 +50,16 @@ public class PythonBridge {
         pythonHome = new File(context.getFilesDir(), PYTHON_DIR_NAME);
         File versionFile = new File(context.getFilesDir(), VERSION_FILE);
 
-        AppLogger.i("PythonBridge", "init: jniLoaded=" + jniLoaded + " jniInitOk=" + jniInitOk);
+        LogUtils.i("PythonBridge", "init: jniLoaded=" + jniLoaded + " jniInitOk=" + jniInitOk);
 
         if (jniInitOk) return true;
 
         // 解压标准库（版本不匹配时重新解压）
         if (!isStdlibReady(pythonHome) || !readFile(versionFile).equals(EXPECTED_VERSION)) {
-            AppLogger.i("PythonBridge", "解压标准库到 " + pythonHome.getAbsolutePath() + " ...");
+            LogUtils.i("PythonBridge", "解压标准库到 " + pythonHome.getAbsolutePath() + " ...");
             extractStdlib(context);
             writeFile(versionFile, EXPECTED_VERSION);
-            AppLogger.i("PythonBridge",
+            LogUtils.i("PythonBridge",
                 "标准库解压完成，os.py=" + new File(pythonHome, "lib/python3.14/os.py").exists());
         }
 
@@ -70,17 +70,17 @@ public class PythonBridge {
 
         try {
             String homePath = pythonHome.getAbsolutePath();
-            AppLogger.i("PythonBridge", "JNI init: PYTHONHOME=" + homePath);
-            AppLogger.i("PythonBridge", "JNI init: os.py=" + new File(pythonHome, "lib/python3.14/os.py").exists());
-            AppLogger.i("PythonBridge", "JNI init: encodings=" + new File(pythonHome, "lib/python3.14/encodings/__init__.py").exists());
+            LogUtils.i("PythonBridge", "JNI init: PYTHONHOME=" + homePath);
+            LogUtils.i("PythonBridge", "JNI init: os.py=" + new File(pythonHome, "lib/python3.14/os.py").exists());
+            LogUtils.i("PythonBridge", "JNI init: encodings=" + new File(pythonHome, "lib/python3.14/encodings/__init__.py").exists());
 
             jniInitRetCode = nativeInit(homePath);
-            AppLogger.i("PythonBridge", "JNI init 返回码: " + jniInitRetCode);
+            LogUtils.i("PythonBridge", "JNI init 返回码: " + jniInitRetCode);
 
             if (jniInitRetCode == 0) {
                 jniInitOk = true;
                 jniInitError = "";
-                AppLogger.i("PythonBridge", "JNI 初始化成功!");
+                LogUtils.i("PythonBridge", "JNI 初始化成功!");
                 // pip 已直接打包进 stdlib（assets/python/stdlib/pip/），
                 // 随 stdlib 一起提取到 pythonHome/lib/python3.14/，
                 // 处于默认 sys.path 中，无需运行时引导安装。
@@ -90,12 +90,12 @@ public class PythonBridge {
             }
 
             jniInitError = nativeGetLastError();
-            AppLogger.e("PythonBridge", "JNI init 失败: ret=" + jniInitRetCode + " error=" + jniInitError);
+            LogUtils.e("PythonBridge", "JNI init 失败: ret=" + jniInitRetCode + " error=" + jniInitError);
             throw new Exception("JNI 初始化失败 (ret=" + jniInitRetCode + "): " + jniInitError);
 
         } catch (Throwable e) {
             jniInitError = e.getMessage();
-            AppLogger.e("PythonBridge", "JNI init 异常: " + jniInitError);
+            LogUtils.e("PythonBridge", "JNI init 异常: " + jniInitError);
             throw new Exception("JNI 初始化异常: " + jniInitError);
         }
     }
@@ -153,7 +153,7 @@ public class PythonBridge {
             libGit = extractGitToFilesDir(context);
         }
         if (libGit == null) {
-            AppLogger.w("PythonBridge", "无可用 git 二进制，跳过 PATH 注入（dulwich 兜底）");
+            LogUtils.w("PythonBridge", "无可用 git 二进制，跳过 PATH 注入（dulwich 兜底）");
             return;
         }
 
@@ -168,7 +168,7 @@ public class PythonBridge {
                 java.nio.file.Files.copy(libGit.toPath(), gitLink.toPath());
                 gitLink.setExecutable(true, false);
             } catch (Exception e) {
-                AppLogger.w("PythonBridge", "无法创建 git 副本: " + e.getMessage());
+                LogUtils.w("PythonBridge", "无法创建 git 副本: " + e.getMessage());
             }
         }
         String pathDir = gitDir.getAbsolutePath();
@@ -211,9 +211,9 @@ public class PythonBridge {
         sb.append("    _sp.Popen = _GitPopen\n");
         try {
             nativeExec(sb.toString());
-            AppLogger.i("PythonBridge", "已注入 git 路径 + GIT_EXEC_PATH 到 Python 环境");
+            LogUtils.i("PythonBridge", "已注入 git 路径 + GIT_EXEC_PATH 到 Python 环境");
         } catch (Exception e) {
-            AppLogger.w("PythonBridge", "PATH 注入失败: " + e.getMessage());
+            LogUtils.w("PythonBridge", "PATH 注入失败: " + e.getMessage());
         }
     }
 
@@ -364,7 +364,7 @@ public class PythonBridge {
         if (pythonHome.exists()) deleteRecursive(pythonHome);
         libDir.mkdirs();
 
-        AppLogger.i("PythonBridge", "提取 " + STDLIB_ASSET_DIR + " → " + libDir.getAbsolutePath());
+        LogUtils.i("PythonBridge", "提取 " + STDLIB_ASSET_DIR + " → " + libDir.getAbsolutePath());
         extractAssetDir(context, STDLIB_ASSET_DIR, libDir);
 
         // pip 因目录嵌套过深（pip/_internal/ 148 文件 + pip/_vendor/ 数百文件），
@@ -381,12 +381,12 @@ public class PythonBridge {
                 for (File so : sos) {
                     so.setExecutable(true, false);
                 }
-                AppLogger.i("PythonBridge", "lib-dynload: " + sos.length + " 个 .so 已设置可执行权限");
+                LogUtils.i("PythonBridge", "lib-dynload: " + sos.length + " 个 .so 已设置可执行权限");
             }
         }
 
         // 诊断日志
-        AppLogger.i("PythonBridge", "=== 提取后文件树 ===");
+        LogUtils.i("PythonBridge", "=== 提取后文件树 ===");
         logFileTree(pythonHome, 0);
     }
 
@@ -439,10 +439,10 @@ public class PythonBridge {
             if (zis != null) try { zis.close(); } catch (IOException ignored) {}
             if (is != null) try { is.close(); } catch (IOException ignored) {}
         }
-        AppLogger.i("PythonBridge", "pip.zip 解压完成: " + count + " 个文件 → " + pipDir.getAbsolutePath());
+        LogUtils.i("PythonBridge", "pip.zip 解压完成: " + count + " 个文件 → " + pipDir.getAbsolutePath());
         // 校验关键子包
         File internalInit = new File(pipDir, "_internal/__init__.py");
-        AppLogger.i("PythonBridge", "pip/_internal/__init__.py 存在: " + internalInit.exists());
+        LogUtils.i("PythonBridge", "pip/_internal/__init__.py 存在: " + internalInit.exists());
     }
 
     private static boolean isStdlibReady(File dir) {
@@ -465,14 +465,14 @@ public class PythonBridge {
             String indent = "  ";
             for (int j = 0; j < depth; j++) indent += "  ";
             if (f.isDirectory()) {
-                AppLogger.i("PythonBridge", indent + f.getName() + "/");
+                LogUtils.i("PythonBridge", indent + f.getName() + "/");
                 logFileTree(f, depth + 1);
             } else {
-                AppLogger.i("PythonBridge", indent + f.getName() + " (" + f.length() + "B)");
+                LogUtils.i("PythonBridge", indent + f.getName() + " (" + f.length() + "B)");
             }
         }
         if (children.length > 20) {
-            AppLogger.i("PythonBridge", "  ... 还有 " + (children.length - 20) + " 项");
+            LogUtils.i("PythonBridge", "  ... 还有 " + (children.length - 20) + " 项");
         }
     }
 

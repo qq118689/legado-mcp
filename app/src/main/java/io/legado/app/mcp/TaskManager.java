@@ -3,7 +3,7 @@ package io.legado.app.mcp;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import io.legado.app.AppLogger;
+import io.legado.app.utils.LogUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,7 +31,7 @@ public class TaskManager {
     }
 
     private void log(String msg) {
-        AppLogger.d("TaskManager", msg);
+        LogUtils.d("TaskManager", msg);
     }
 
     /**

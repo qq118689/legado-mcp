@@ -1,7 +1,7 @@
 package io.legado.app.mcp;
 
 import android.content.Context;
-import io.legado.app.AppLogger;
+import io.legado.app.utils.LogUtils;
 import io.legado.app.DeepSeekChatBridge;
 import io.legado.app.tools.ToolManager;
 import io.legado.app.skills.SkillManager;
@@ -114,7 +114,7 @@ public class McpServer {
             logListener.onLog(message);
         }
         // 路由到 AppLogger 统一输出（logcat + 本地文件），避免重复 Log.d
-        AppLogger.i("McpServer", message);
+        LogUtils.i("McpServer", message);
     }
 
     /**
@@ -657,10 +657,10 @@ public class McpServer {
                 if (!fixed.equals(jsonStr)) {
                     try {
                         JSONObject fixedJson = new JSONObject(fixed);
-                        AppLogger.d("McpServer", "extractJsonObject: 修复未转义双引号后解析成功");
+                        LogUtils.d("McpServer", "extractJsonObject: 修复未转义双引号后解析成功");
                         return fixedJson;
                     } catch (Exception e2) {
-                        AppLogger.w("McpServer", "extractJsonObject: 修复后仍解析失败: " + e2.getMessage());
+                        LogUtils.w("McpServer", "extractJsonObject: 修复后仍解析失败: " + e2.getMessage());
                     }
                 }
                 return null;

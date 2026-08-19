@@ -2,7 +2,7 @@ package io.legado.app.skills;
 
 import android.content.Context;
 import android.content.res.AssetManager;
-import io.legado.app.AppLogger;
+import io.legado.app.utils.LogUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -74,15 +74,15 @@ public class SkillManager {
         File base = (extDir != null) ? new File(extDir, "skills") : null;
         if (base != null) {
             if (!base.exists()) base.mkdirs();
-            AppLogger.i(TAG, "运行时技能目录: " + base.getAbsolutePath());
+            LogUtils.i(TAG, "运行时技能目录: " + base.getAbsolutePath());
         } else {
-            AppLogger.w(TAG, "无法获取外部存储，运行时技能不可用");
+            LogUtils.w(TAG, "无法获取外部存储，运行时技能不可用");
         }
         discoverAssets();
         if (base != null) discoverRuntime(base);
-        AppLogger.i(TAG, "已加载 " + skills.size() + " 个技能，注册工具 " + registeredToolNames.size() + " 个");
+        LogUtils.i(TAG, "已加载 " + skills.size() + " 个技能，注册工具 " + registeredToolNames.size() + " 个");
         for (Skill s : skills) {
-            AppLogger.i(TAG, "  技能: " + s.id + " (from=" + (s.fromAssets ? "assets" : "runtime") + ")");
+            LogUtils.i(TAG, "  技能: " + s.id + " (from=" + (s.fromAssets ? "assets" : "runtime") + ")");
         }
     }
 
@@ -102,7 +102,7 @@ public class SkillManager {
                 Skill skill = buildSkillFromAssets(am, id);
                 if (skill != null) addSkill(skill);
             } catch (Exception e) {
-                AppLogger.w(TAG, "跳过 assets 技能 " + id + ": " + e.getMessage());
+                LogUtils.w(TAG, "跳过 assets 技能 " + id + ": " + e.getMessage());
             }
         }
     }
@@ -147,12 +147,12 @@ public class SkillManager {
     // ============ 发现：运行时外部目录 ============
     private void discoverRuntime(File base) {
         if (!base.exists() || !base.isDirectory()) {
-            AppLogger.d(TAG, "运行时技能目录不存在: " + base.getAbsolutePath());
+            LogUtils.d(TAG, "运行时技能目录不存在: " + base.getAbsolutePath());
             return;
         }
         File[] entries = base.listFiles();
         if (entries == null || entries.length == 0) {
-            AppLogger.d(TAG, "运行时技能目录为空: " + base.getAbsolutePath());
+            LogUtils.d(TAG, "运行时技能目录为空: " + base.getAbsolutePath());
             return;
         }
         for (File d : entries) {
@@ -167,7 +167,7 @@ public class SkillManager {
                 }
                 if (skill != null) addSkill(skill);
             } catch (Exception e) {
-                AppLogger.w(TAG, "跳过运行时技能 " + d.getName() + ": " + e.getMessage());
+                LogUtils.w(TAG, "跳过运行时技能 " + d.getName() + ": " + e.getMessage());
             }
         }
     }
@@ -263,7 +263,7 @@ public class SkillManager {
                 // runtime 覆盖 assets：默认内置优先，runtime 需显式声明 override: true 才覆盖
                 // 防止 runtime 目录下同名的旧/测试文件意外覆盖内置 skill
                 if (!"true".equalsIgnoreCase(skill.override)) {
-                    AppLogger.i(TAG, "技能 " + skill.id + " runtime 版本未声明 override:true，保留内置版本");
+                    LogUtils.i(TAG, "技能 " + skill.id + " runtime 版本未声明 override:true，保留内置版本");
                     return;
                 }
                 skills.remove(existing);
@@ -273,11 +273,11 @@ public class SkillManager {
                     ToolManager.getInstance().removeTools(oldToolNames);
                     registeredToolNames.removeAll(oldToolNames);
                 }
-                AppLogger.i(TAG, "技能 " + skill.id + " 被 runtime 版本覆盖 (override:true)");
+                LogUtils.i(TAG, "技能 " + skill.id + " 被 runtime 版本覆盖 (override:true)");
             } else {
                 // 同来源重复或 assets 覆盖 runtime（后者理论不会发生，因 assets 先扫）
                 // 跳过新 skill，保留已注册的，避免重复
-                AppLogger.w(TAG, "技能 " + skill.id + " 重复，跳过 (existing from="
+                LogUtils.w(TAG, "技能 " + skill.id + " 重复，跳过 (existing from="
                         + (existing.fromAssets ? "assets" : "runtime")
                         + ", new from=" + (skill.fromAssets ? "assets" : "runtime") + ")");
                 return;
@@ -292,7 +292,7 @@ public class SkillManager {
         for (Skill.ToolDef td : skill.tools) {
             // 冲突处理：同名工具已存在则跳过，保证内置/APK 工具优先
             if (ToolManager.getInstance().getTool(td.name) != null) {
-                AppLogger.w(TAG, "工具名冲突，跳过技能工具: " + td.name);
+                LogUtils.w(TAG, "工具名冲突，跳过技能工具: " + td.name);
                 continue;
             }
             SkillTool st = new SkillTool(skill.id, td.name, td.description, td.inputSchema,

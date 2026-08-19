@@ -2,7 +2,7 @@ package io.legado.app.tools;
 
 import android.content.Context;
 
-import io.legado.app.AppLogger;
+import io.legado.app.utils.LogUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -53,15 +53,15 @@ public class ToolManager {
         registerTool(new AskTool());
         
         // 注册 GM 工具（内存修改相关）
-        registerTool(new RootStatusTool());
-        registerTool(new ProcessListTool(context));
-        registerTool(new AttachProcessTool());
-        registerTool(new MemorySearchTool());
-        registerTool(new MemoryWriteTool());
-        registerTool(new MemoryReadTool());
-        registerTool(new MemoryFreezeTool());
-        registerTool(new AobSearchTool());
-        registerTool(new LuaExecuteTool(context));
+//         registerTool(new RootStatusTool());
+//         registerTool(new ProcessListTool(context));
+//         registerTool(new AttachProcessTool());
+//         registerTool(new MemorySearchTool());
+//         registerTool(new MemoryWriteTool());
+//         registerTool(new MemoryReadTool());
+//         registerTool(new MemoryFreezeTool());
+//         registerTool(new AobSearchTool());
+//         registerTool(new LuaExecuteTool(context));
         
         // 注册 APK MCP 工具（从 MT 管理器动态拉取）
         mergeApkTools();
@@ -98,7 +98,7 @@ public class ToolManager {
         if (!client.isEnabled()) return;
         
         if (!client.connect()) {
-            AppLogger.w("ToolManager", "APK MCP 连接失败，跳过工具合并");
+            LogUtils.w("ToolManager", "APK MCP 连接失败，跳过工具合并");
             return;
         }
         
@@ -123,7 +123,7 @@ public class ToolManager {
                 // skip malformed tool
             }
         }
-        AppLogger.i("ToolManager", "已合并 " + count + " 个 APK MCP 工具");
+        LogUtils.i("ToolManager", "已合并 " + count + " 个 APK MCP 工具");
     }
     
     /**
