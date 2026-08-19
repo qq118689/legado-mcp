@@ -174,7 +174,7 @@ public class JavaScriptBridge {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                LogUtils.d("JSBridge", message);
+                AppLogger.d("JSBridge", message);
             }
         });
     }

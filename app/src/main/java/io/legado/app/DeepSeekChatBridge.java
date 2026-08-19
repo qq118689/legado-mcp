@@ -5,7 +5,7 @@ import android.os.Looper;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
 
-import io.legado.app.utils.LogUtils;
+import io.legado.app.AppLogger;
 
 import org.json.JSONObject;
 
@@ -88,7 +88,7 @@ public class DeepSeekChatBridge {
     public synchronized void register(WebView webView) {
         this.boundWebView = webView;
         this.mainHandler = new Handler(Looper.getMainLooper());
-        LogUtils.d("DeepSeekChatBridge", "已注册 WebView: " + (webView != null ? "有效" : "null"));
+        AppLogger.d("DeepSeekChatBridge", "已注册 WebView: " + (webView != null ? "有效" : "null"));
     }
 
     // 全局标记：DeepSeek 页面是否已完成 initialize（含系统提示词和工具列表）
@@ -119,7 +119,7 @@ public class DeepSeekChatBridge {
             handler = mainHandler;
         }
         if (wb == null || handler == null) {
-            LogUtils.w("DeepSeekChatBridge", "toggleDeepThink: WebView 未注册");
+            AppLogger.w("DeepSeekChatBridge", "toggleDeepThink: WebView 未注册");
             return false;
         }
         // 同步更新 window 变量，保证下次 sendScript 读取的值与实际状态一致
@@ -146,7 +146,7 @@ public class DeepSeekChatBridge {
                 try {
                     wb.evaluateJavascript(js, null);
                 } catch (Exception e) {
-                    LogUtils.e("DeepSeekChatBridge", "toggleDeepThink evaluateJavascript 异常: " + e.getMessage());
+                    AppLogger.e("DeepSeekChatBridge", "toggleDeepThink evaluateJavascript 异常: " + e.getMessage());
                 }
             }
         });
@@ -162,7 +162,7 @@ public class DeepSeekChatBridge {
 
     // Activity 返回/销毁时调用：保持 WebView 存活
     public synchronized void detach() {
-        LogUtils.d("DeepSeekChatBridge", "detach: WebView 保持存活");
+        AppLogger.d("DeepSeekChatBridge", "detach: WebView 保持存活");
     }
 
     public synchronized void unregister() {
@@ -175,7 +175,7 @@ public class DeepSeekChatBridge {
         latchById.clear();
         replyById.clear();
         errorById.clear();
-        LogUtils.d("DeepSeekChatBridge", "已注销 WebView");
+        AppLogger.d("DeepSeekChatBridge", "已注销 WebView");
     }
 
     public synchronized WebView getBoundWebView() { return boundWebView; }
@@ -186,13 +186,13 @@ public class DeepSeekChatBridge {
     // ---- MCP 工具箱 WebView 管理（跨 Activity 保持） ----
     public synchronized void registerMcpWebView(WebView wv) {
         this.mcpWebView = wv;
-        LogUtils.d("DeepSeekChatBridge", "已注册 MCP WebView: " + (wv != null ? "有效" : "null"));
+        AppLogger.d("DeepSeekChatBridge", "已注册 MCP WebView: " + (wv != null ? "有效" : "null"));
     }
     public synchronized WebView getMcpWebView() { return mcpWebView; }
     public synchronized boolean isMcpWebViewLoaded() { return mcpWebViewLoaded && mcpWebView != null; }
     public synchronized void markMcpWebViewLoaded() { this.mcpWebViewLoaded = true; }
     public synchronized void detachMcp() {
-        LogUtils.d("DeepSeekChatBridge", "detachMcp: MCP WebView 保持存活");
+        AppLogger.d("DeepSeekChatBridge", "detachMcp: MCP WebView 保持存活");
     }
 
     /**
@@ -255,7 +255,7 @@ public class DeepSeekChatBridge {
         try {
             // 延长到 1800 秒（30 分钟），给 LLM 足够时间处理复杂任务
             if (!latch.await(1800, java.util.concurrent.TimeUnit.SECONDS)) {
-                LogUtils.w("DeepSeekChatBridge",
+                AppLogger.w("DeepSeekChatBridge",
                     "sendMessage 超时（1800s），message=" + (message == null ? "" : message));
                 return null;
             }
@@ -264,7 +264,7 @@ public class DeepSeekChatBridge {
             return null;
         }
         if (errRef.get() != null) {
-            LogUtils.w("DeepSeekChatBridge", "sendMessage 错误: " + errRef.get());
+            AppLogger.w("DeepSeekChatBridge", "sendMessage 错误: " + errRef.get());
             return null;
         }
         return replyRef.get();
@@ -312,23 +312,23 @@ public class DeepSeekChatBridge {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] injectChatScript完成, 提交到线程池");
+                AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] injectChatScript完成, 提交到线程池");
 
                 // 用线程池代替 new Thread，避免多轮对话线程泄漏导致 OOM
                 executorService.submit(new Runnable() {
                     @Override
                     public void run() {
-                        LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 后台线程已启动, 进入latch.await");
+                        AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 后台线程已启动, 进入latch.await");
                         try {
                             // 第一阶段：等待 JS observer 捕获回复（120 秒）
                             // 正常情况下 observer 会在几秒内捕获 LLM 回复
                             // 增加超时时间，因为 LLM 生成复杂回复可能需要较长时间
                             boolean completed = latch.await(60, TimeUnit.SECONDS);
-                            LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] latch.await返回: completed=" + completed);
+                            AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] latch.await返回: completed=" + completed);
                             StreamCallback cb = callbacksById.get(requestId);
                             if (!completed) {
                                 // observer 未触发，尝试 Java 端兜底：直接 JS 提取 DOM 内容
-                                LogUtils.w("DeepSeekChatBridge",
+                                AppLogger.w("DeepSeekChatBridge",
                                     "[" + requestId + "] observer 未捕获回复，触发兜底 DOM 提取");
                                 tryExtractFromDOMAndRelease(requestId);
                                 // 第二阶段：等待兜底提取结果（额外 30 秒）
@@ -338,24 +338,24 @@ public class DeepSeekChatBridge {
                             String reply = replyRef.get();
                             String err = errorRef.get();
                             if (cb != null) {
-                                LogUtils.d("DeepSeekChatBridge",
+                                AppLogger.d("DeepSeekChatBridge",
                                     "[" + requestId + "] 回调准备: reply=" + (reply != null ? reply.length() : 0)
                                     + "字 err=" + err + " cb=" + cb.getClass().getSimpleName());
                                 if (err != null) {
-                                    LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError");
+                                    AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError");
                                     cb.onError(err);
                                 } else if (reply != null && !reply.isEmpty()) {
-                                    LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onDone, 长度=" + reply.length());
+                                    AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onDone, 长度=" + reply.length());
                                     cb.onDone(reply);
                                 } else if (completed) {
-                                    LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError(收到回复为空)");
+                                    AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError(收到回复为空)");
                                     cb.onError("收到回复为空");
                                 } else {
-                                    LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError(等待超时)");
+                                    AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 调用 onError(等待超时)");
                                     cb.onError("等待超时，JavaScript 端未触发完成");
                                 }
                             } else {
-                                LogUtils.e("DeepSeekChatBridge", "[" + requestId + "] 回调为NULL! 无法调用 onDone/onError");
+                                AppLogger.e("DeepSeekChatBridge", "[" + requestId + "] 回调为NULL! 无法调用 onDone/onError");
                             }
                         } catch (InterruptedException e) {
                             StreamCallback cb = callbacksById.get(requestId);
@@ -413,7 +413,7 @@ public class DeepSeekChatBridge {
                         try {
                             cb.onThink(thinkText, durationSec);
                         } catch (Exception e) {
-                            LogUtils.e("DeepSeekChatBridge",
+                            AppLogger.e("DeepSeekChatBridge",
                                 "onThink 回调执行异常: " + e.getClass().getName()
                                     + " " + (e.getMessage() == null ? "(null)" : e.getMessage())
                                     + "\n" + android.util.Log.getStackTraceString(e));
@@ -998,13 +998,13 @@ public class DeepSeekChatBridge {
                 webView.evaluateJavascript(observerScript, new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String result) {
-                        LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] observerScript 返回: " + result);
+                        AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] observerScript 返回: " + result);
                     }
                 });
                 webView.evaluateJavascript(sendScript, new ValueCallback<String>() {
                     @Override
                     public void onReceiveValue(String sendResult) {
-                        LogUtils.d("DeepSeekChatBridge", "[" + requestId + "] 发送结果: " + sendResult);
+                        AppLogger.d("DeepSeekChatBridge", "[" + requestId + "] 发送结果: " + sendResult);
                     }
                 });
             }
@@ -1054,25 +1054,25 @@ public class DeepSeekChatBridge {
         if (requestId == null) return;
         // 若 JS 回传了空回复，先在 Java 侧做一次备用 DOM 提取再放行
         if (reply == null || reply.isEmpty()) {
-            LogUtils.w("DeepSeekChatBridge",
+            AppLogger.w("DeepSeekChatBridge",
                 "[" + requestId + "] 收到空回复，触发备用 DOM 提取");
             tryExtractFromDOMAndRelease(requestId);
             return;
         }
         AtomicReference<String> ref = replyById.get(requestId);
         if (ref != null) ref.set(reply);
-        else LogUtils.w("DeepSeekChatBridge", "[" + requestId + "] replyRef 为null!");
+        else AppLogger.w("DeepSeekChatBridge", "[" + requestId + "] replyRef 为null!");
         CountDownLatch l = latchById.get(requestId);
         if (l != null) {
             l.countDown();
-            LogUtils.d("DeepSeekChatBridge",
+            AppLogger.d("DeepSeekChatBridge",
                 "[" + requestId + "] latch已释放 (剩余计数前=1)");
         } else {
-            LogUtils.e("DeepSeekChatBridge", "[" + requestId + "] latch为null! 无法释放");
+            AppLogger.e("DeepSeekChatBridge", "[" + requestId + "] latch为null! 无法释放");
         }
         
         // 所有 LLM 回复必须完整记录，不截断
-        LogUtils.d("DeepSeekChatBridge",
+        AppLogger.d("DeepSeekChatBridge",
             "[" + requestId + "] LLM回复 (长度=" + reply.length() + ")\n" + reply);
     }
 
@@ -1175,7 +1175,7 @@ public class DeepSeekChatBridge {
                                 // 解析失败时忽略，extracted 保持 null
                             }
                         }
-                        LogUtils.d("DeepSeekChatBridge",
+                        AppLogger.d("DeepSeekChatBridge",
                             "[" + requestId + "] 备用 DOM 提取结果长度=" + (extracted == null ? 0 : extracted.length())
                             + "\n内容: " + (extracted == null ? "(null)" : extracted));
                         if (ref != null) ref.set(extracted);
@@ -1192,7 +1192,7 @@ public class DeepSeekChatBridge {
         AtomicReference<String> errRef = errorById.get(requestId);
         if (errRef != null) errRef.set(error);
         if (l != null) l.countDown();
-        LogUtils.e("DeepSeekChatBridge",
+        AppLogger.e("DeepSeekChatBridge",
             "[" + requestId + "] JS 错误: " + error);
     }
 
@@ -1283,7 +1283,7 @@ public class DeepSeekChatBridge {
                 return arr.getString(0);
             }
         } catch (Exception e) {
-            LogUtils.w("DeepSeekChatBridge", "getSessions 解包失败: " + e.getMessage());
+            AppLogger.w("DeepSeekChatBridge", "getSessions 解包失败: " + e.getMessage());
         }
         return raw;
     }
@@ -1359,7 +1359,7 @@ public class DeepSeekChatBridge {
                     wb.loadUrl(url);
                     resultRef.set(true);
                 } catch (Exception e) {
-                    LogUtils.e("DeepSeekChatBridge", "openDeepSeekUrl 失败: " + e.getMessage());
+                    AppLogger.e("DeepSeekChatBridge", "openDeepSeekUrl 失败: " + e.getMessage());
                     resultRef.set(false);
                 } finally {
                     latch.countDown();
